@@ -1,16 +1,22 @@
 package aomk.kooperate
 
-import io.ktor.application.*
-import io.ktor.response.*
-import io.ktor.request.*
-import io.ktor.routing.*
-import io.ktor.http.*
-import io.ktor.content.*
-import io.ktor.http.content.*
+import freemarker.cache.ClassTemplateLoader
+import io.ktor.application.Application
+import io.ktor.application.call
+import io.ktor.application.install
 import io.ktor.features.*
-import io.ktor.websocket.*
-import io.ktor.http.cio.websocket.*
-import java.time.*
+import io.ktor.freemarker.FreeMarker
+import io.ktor.freemarker.FreeMarkerContent
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.cio.websocket.Frame
+import io.ktor.http.cio.websocket.readText
+import io.ktor.http.content.resources
+import io.ktor.http.content.static
+import io.ktor.response.respond
+import io.ktor.routing.get
+import io.ktor.routing.routing
+import io.ktor.websocket.webSocket
+import java.time.Duration
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
@@ -40,12 +46,16 @@ fun Application.module(testing: Boolean = false) {
 
     routing {
         get("/") {
-            call.respondText("HELLO WORLD!", contentType = ContentType.Text.Plain)
+            call.respond(FreeMarkerContent("index.ftl", null, "e"))
         }
 
         // Static feature. Try to access `/static/ktor_logo.svg`
         static("/static") {
             resources("static")
+        }
+
+        static("css") {
+            resources("frontend/css")
         }
 
         install(StatusPages) {
@@ -56,6 +66,10 @@ fun Application.module(testing: Boolean = false) {
                 call.respond(HttpStatusCode.Forbidden)
             }
 
+        }
+
+        install(FreeMarker) {
+            templateLoader = ClassTemplateLoader(Application::class.java.classLoader, "frontend")
         }
 
         webSocket("/myws/echo") {
