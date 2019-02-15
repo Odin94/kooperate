@@ -14,19 +14,19 @@
     <h1 style="position: center; text-align: center; margin-top: 50px;">Kooperate</h1>
 </header>
 <section id="section-login">
-    <input type='checkbox' id='form-switch'>
-    <form id='login-form' action="" method='post'>
-        <input type="text" placeholder="Username" required>
-        <input type="password" placeholder="Password" required>
-        <button type='submit'>Login</button>
-        <label for='form-switch'><span>Register</span></label>
+    <input type="checkbox" id="form-switch">
+    <form id="login-form" action="/login" method="post">
+        <input name="name" type="text" placeholder="Username" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+        <label for="form-switch"><span>Register</span></label>
     </form>
-    <form id='register-form' action="" method='post'>
-        <input type="text" placeholder="Username" required>
-        <input type="email" placeholder="Email" required>
-        <input type="password" placeholder="Password" required>
-        <button type='submit'>Register</button>
-        <label for='form-switch'>Already Member ? Sign In Now..</label>
+    <form id="register-form" action="/register" method="post">
+        <input name="name" type="text" placeholder="Username" required>
+        <input name="email" type="email" placeholder="Email" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <button type="submit">Register</button>
+        <label for="form-switch">Already Member ? Sign In Now..</label>
     </form>
 </section>
 </body>

@@ -4,6 +4,7 @@ import freemarker.cache.ClassTemplateLoader
 import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
+import io.ktor.auth.*
 import io.ktor.features.*
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
@@ -13,13 +14,19 @@ import io.ktor.http.cio.websocket.readText
 import io.ktor.http.content.resources
 import io.ktor.http.content.static
 import io.ktor.response.respond
+import io.ktor.response.respondRedirect
 import io.ktor.routing.get
+import io.ktor.routing.post
 import io.ktor.routing.routing
+import io.ktor.sessions.*
+import io.ktor.util.KtorExperimentalAPI
+import io.ktor.util.hex
 import io.ktor.websocket.webSocket
 import java.time.Duration
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
+@KtorExperimentalAPI
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
@@ -44,9 +51,64 @@ fun Application.module(testing: Boolean = false) {
         masking = false
     }
 
+    install(Authentication) {
+        form(name = "form_auth") {
+            skipWhen { call -> call.sessions.get<UserSession>() != null }
+            userParamName = "name"
+            passwordParamName = "password"
+            challenge = FormAuthChallenge.Redirect { credentials -> "/login" }
+            validate { credentials ->
+                if (credentials.name == "admin" && credentials.password == "password")
+                    UserIdPrincipal(credentials.name)
+                else
+                    null
+            }
+        }
+    }
+
+    install(Sessions) {
+        val secretHashKey = hex("681aa57a3269f5c1968f45236123")
+
+        cookie<UserSession>("UserSession") {
+            cookie.path = "/"
+            transform(SessionTransportTransformerMessageAuthentication(secretHashKey, "HmacSHA256"))
+            SessionStorageMemory()
+        }
+    }
+
+    install(FreeMarker) {
+        templateLoader = ClassTemplateLoader(Application::class.java.classLoader, "frontend")
+    }
+
     routing {
         get("/") {
             call.respond(FreeMarkerContent("index.ftl", null, "e"))
+        }
+
+        get("/login") {
+            call.respond(FreeMarkerContent("index.ftl", null, "e"))
+        }
+
+        authenticate("form_auth") {
+            post("/login") {
+                val principal = call.authentication.principal<UserIdPrincipal>()
+                if (principal != null) {
+                    call.sessions.set(UserSession(principal.name))
+                    call.respondRedirect("/admin")
+                } else {
+                    call.respondRedirect("/login")
+                }
+            }
+        }
+
+        get("/admin") {
+            val userSession: UserSession? = call.sessions.get<UserSession>()
+
+            if (userSession == null) {
+                call.respondRedirect("/login")
+            } else {
+                call.respond("Nice Meme, ${userSession.name}")
+            }
         }
 
         // Static feature. Try to access `/static/ktor_logo.svg`
@@ -68,10 +130,6 @@ fun Application.module(testing: Boolean = false) {
 
         }
 
-        install(FreeMarker) {
-            templateLoader = ClassTemplateLoader(Application::class.java.classLoader, "frontend")
-        }
-
         webSocket("/myws/echo") {
             send(Frame.Text("Hi from server"))
             while (true) {
@@ -87,3 +145,4 @@ fun Application.module(testing: Boolean = false) {
 class AuthenticationException : RuntimeException()
 class AuthorizationException : RuntimeException()
 
+data class UserSession(val name: String)
